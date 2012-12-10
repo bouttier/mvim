@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+#-*- coding: utf-8 -*-
+
+import os
+import sys
+import tempfile
+import subprocess
+
+def mvim(path):
+    try:
+        oldnames = os.listdir(path)
+    except FileNotFoundError:
+        print(sys.exc_info()[1])
+        return
+    oldnames.sort()
+    tmpfile = tempfile.NamedTemporaryFile(prefix='vimv.')
+    for name in oldnames:
+        tmpfile.write(("%s\n" %name).encode('utf8'))
+    tmpfile.file.flush()
+    while True:
+        subprocess.call(['vim', tmpfile.name])
+        tmpfile.file.seek(os.SEEK_SET)
+        newnames = []
+        while True:
+            line = tmpfile.file.readline()
+            if line == b'':
+                break
+            newnames.append(line.strip().decode('utf8'))
+        if len(newnames) != len(oldnames):
+            i = len(newnames) - len(oldnames)
+            if i > 0:
+                verb = "added"
+            else:
+                verb = "removed"
+            plural = ""
+            if abs(i) != 1:
+                plural = "s"
+            print("Error: you %s %d line%s" %(verb, abs(i), plural))
+            if not query_yes_no("Would you like edit file list again ?"):
+                return
+        else:
+            break
+    
+    for i in range(0, len(newnames)):
+        if newnames[i] == "":
+            if query_yes_no("Are you sure to delete '%s' ?" %oldnames[i], "no"):
+                os.remove(oldnames[i])
+            else:
+                print("Skipping '%s' ..." %oldnames[i])
+        elif not newnames[i] == oldnames[i]:
+            print("Rename '%s' to '%s' ..." %(oldnames[i], newnames[i]))
+            os.rename(oldnames[i], newnames[i])
+
+
+def query_yes_no(question, default="yes"):
+    """Ask a yes/no question via raw_input() and return their answer.
+
+    "question" is a string that is presented to the user.
+    "default" is the presumed answer if the user just hits <Enter>.
+        It must be "yes" (the default), "no" or None (meaning
+        an answer is required of the user).
+
+    The "answer" return value is one of "yes" or "no".
+    """
+    valid = {"yes":True,   "y":True,  "ye":True,
+             "no":False,     "n":False}
+    if default == None:
+        prompt = " [y/n] "
+    elif default == "yes":
+        prompt = " [Y/n] "
+    elif default == "no":
+        prompt = " [y/N] "
+    else:
+        raise ValueError("invalid default answer: '%s'" % default)
+
+    while True:
+        print(question + prompt)
+        choice = input().lower()
+        if default is not None and choice == '':
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            print("Please respond with 'yes' or 'no' "\
+                             "(or 'y' or 'n').\n")
+
+if __name__ == "__main__":
+    path = '.'
+    if len(sys.argv) == 2:
+        path = sys.argv[1]
+    elif len(sys.argv) > 2:
+        print("Usage: %s [PATH]" %sys.argv[0])
+    mvim(path)
