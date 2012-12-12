@@ -49,7 +49,7 @@ def mvim(path):
                 print("Skipping '%s' ..." %oldnames[i])
         elif not newnames[i] == oldnames[i]:
             print("Rename '%s' to '%s' ..." %(oldnames[i], newnames[i]))
-            os.rename(oldnames[i], newnames[i])
+            os.rename(path+'/'+oldnames[i], path+'/'+newnames[i])
 
 
 def query_yes_no(question, default="yes"):
