@@ -5,6 +5,7 @@ import sys
 from tempfile import NamedTemporaryFile
 import subprocess
 from argparse import ArgumentParser
+from shutil import rmtree
 
 class MVim:
 
@@ -12,12 +13,18 @@ class MVim:
 
         self.all_files = False
         self.follow_symlinks = False
+        self.force = False
+        self.recursive = False
 
         for arg in kwargs:
             if arg == 'all_files':
                 self.all_files = kwargs[arg]
             elif arg == 'follow_symlinks':
                 self.follow_symlinks = kwargs[arg]
+            elif arg == 'force':
+                self.force = kwargs[arg]
+            elif arg == 'recursive':
+                self.recursive = kwargs[arg]
             else:
                 print("Warning: ignoring invalid option '%s'" %arg, file=sys.stdout)
 
@@ -104,16 +111,19 @@ class MVim:
 
         for i in range(0, len(newnames)):
             if newnames[i] == "":
-                if query_yes_no("Are you sure to delete '%s' ?" %self.oldnames[i], "no"):
-                    try:
-                        os.remove(self.oldnames[i])
-                    except Exception as e:
-                        print("Error: can not delete '%s':" %self.oldnames[i], e.strerror)
+                if self.force or query_yes_no("Are you sure to delete '%s' ?" %self.oldnames[i], "no"):
+                    if self.recursive and os.path.isdir(self.oldnames[i]) and not os.path.islink(self.oldnames[i]):
+                        rmtree(self.oldnames[i])
+                    else:
+                        try:
+                            os.remove(self.oldnames[i])
+                        except Exception as e:
+                            print("Error: can not delete '%s':" %self.oldnames[i], e.strerror)
                 else:
                     print("Skipping '%s' ..." %self.oldnames[i])
             elif not newnames[i] == self.oldnames[i]:
                 print("Rename '%s' to '%s' ..." %(self.oldnames[i], newnames[i]))
-                os.rename(path+'/'+self.oldnames[i], path+'/'+newnames[i])
+                os.rename(self.oldnames[i], newnames[i])
 
 
 def query_yes_no(question, default="yes"):
@@ -138,7 +148,7 @@ def query_yes_no(question, default="yes"):
         raise ValueError("invalid default answer: '%s'" % default)
 
     while True:
-        print(question + prompt)
+        print(question + prompt, end='')
         choice = input().lower()
         if default is not None and choice == '':
             return valid[default]
@@ -146,13 +156,15 @@ def query_yes_no(question, default="yes"):
             return valid[choice]
         else:
             print("Please respond with 'yes' or 'no' "\
-                             "(or 'y' or 'n').\n")
+                             "(or 'y' or 'n').")
 
 if __name__ == "__main__":
 
     parser = ArgumentParser(description='Rename files by editing their names with vim.')
     parser.add_argument('-a', '--all', dest='all_files', action='store_true', help='do not ignore entries starting with.')
-    parser.add_argument('-f', '--follow-symlinks', dest='follow_symlinks', action='store_true', help='follow symlinks.')
+    parser.add_argument('-s', '--follow-symlinks', dest='follow_symlinks', action='store_true', help='follow symlinks.')
+    parser.add_argument('-f', '--force', dest='force', action='store_true', help='bypass “Are you sure?” messages.')
+    parser.add_argument('-r', '--recursive', dest='recursive', action='store_true', help='remove directories and their contents recursively.')
     parser.add_argument('files', metavar='FILE', nargs='*')
 
     args = parser.parse_args()
@@ -161,4 +173,4 @@ if __name__ == "__main__":
     if not files:
         files.append('.')
 
-    MVim(args.files, all_files=args.all_files, follow_symlinks=args.follow_symlinks)
+    MVim(args.files, all_files=args.all_files, follow_symlinks=args.follow_symlinks, force=args.force, recursive=args.recursive)
