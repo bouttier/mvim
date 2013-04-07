@@ -1,55 +1,121 @@
 #!/usr/bin/env python3
-#-*- coding: utf-8 -*-
 
 import os
 import sys
-import tempfile
+from tempfile import NamedTemporaryFile
 import subprocess
+from argparse import ArgumentParser
 
-def mvim(path):
-    try:
-        oldnames = os.listdir(path)
-    except FileNotFoundError:
-        print(sys.exc_info()[1])
-        return
-    oldnames.sort()
-    tmpfile = tempfile.NamedTemporaryFile(prefix='vimv.')
-    for name in oldnames:
-        tmpfile.write(("%s\n" %name).encode('utf8'))
-    tmpfile.file.flush()
-    while True:
-        subprocess.call(['vim', tmpfile.name])
-        tmpfile.file.seek(os.SEEK_SET)
-        newnames = []
-        while True:
-            line = tmpfile.file.readline()
-            if line == b'':
-                break
-            newnames.append(line.strip().decode('utf8'))
-        if len(newnames) != len(oldnames):
-            i = len(newnames) - len(oldnames)
-            if i > 0:
-                verb = "added"
+class MVim:
+
+    def __init__(self, files, **kwargs):
+
+        self.all_files = False
+        self.follow_symlinks = False
+
+        for arg in kwargs:
+            if arg == 'all_files':
+                self.all_files = kwargs[arg]
+            elif arg == 'follow_symlinks':
+                self.follow_symlinks = kwargs[arg]
             else:
-                verb = "removed"
-            plural = ""
-            if abs(i) != 1:
-                plural = "s"
-            print("Error: you %s %d line%s" %(verb, abs(i), plural))
-            if not query_yes_no("Would you like edit file list again ?"):
-                return
-        else:
-            break
+                print("Warning: ignoring invalid option '%s'" %arg, file=sys.stdout)
+
+        self.oldnames = []
+        self.added_dir = []
+        self.added_files = []
+
+        for file in files:
+            self.add(file)
+
+        print(self.oldnames)
+
+        self.tmpfile = NamedTemporaryFile(prefix='vimv.')
+        for name in self.oldnames:
+            self.tmpfile.write(("%s\n" %name).encode('utf8'))
+        self.tmpfile.file.flush()
+
+        self.edit()
+
+    def add(self, file):
     
-    for i in range(0, len(newnames)):
-        if newnames[i] == "":
-            if query_yes_no("Are you sure to delete '%s' ?" %oldnames[i], "no"):
-                os.remove(oldnames[i])
+        if os.path.lexists(file):
+
+            if os.path.isdir(file):
+                if not self.follow_symlinks and os.path.islink(file):
+                    self.oldnames += [ file ]
+                    return
+                added = False
+                for added_dir in self.added_dir:
+                    try:
+                        if os.path.samefile(added_dir, file):
+                            added = True
+                            break
+                    except OSError:
+                        pass
+                if not added:
+                    self.added_dir.append(file)
+                    listdir = os.listdir(file)
+                    listdir.sort()
+                    if not self.all_files:
+                        listdir = [ x for x in listdir if x[0] != '.' ]
+                    if file != '.':
+                        self.oldnames += list(map(lambda x: os.path.join(file, x), listdir))
+                    else:
+                        self.oldnames += listdir
+            elif os.path.isfile(file):
+                added = False
+                for added_file in self.added_files:
+                    try:
+                        if added_file == file:
+                            added = True
+                            break
+                    except OSError:
+                        pass
+                if not added:
+                    self.added_files.append(file)
+                    self.oldnames += [ file ]
+
+        else:
+            print("Warning: ignoring '%s': no such file or directory" %file, file=sys.stderr)
+
+    def edit(self):
+        while True:
+            subprocess.call(['vim', self.tmpfile.name])
+            self.tmpfile.file.seek(os.SEEK_SET)
+            newnames = []
+            while True:
+                line = self.tmpfile.file.readline()
+                if line == b'':
+                    break
+                newnames.append(line.strip().decode('utf8'))
+            if len(newnames) != len(self.oldnames):
+                i = len(newnames) - len(self.oldnames)
+                if i > 0:
+                    verb = "added"
+                else:
+                    verb = "removed"
+                plural = ""
+                if abs(i) != 1:
+                    plural = "s"
+                print("Error: you %s %d line%s" %(verb, abs(i), plural))
+                if not query_yes_no("Would you like edit file list again ?"):
+                    return
             else:
-                print("Skipping '%s' ..." %oldnames[i])
-        elif not newnames[i] == oldnames[i]:
-            print("Rename '%s' to '%s' ..." %(oldnames[i], newnames[i]))
-            os.rename(path+'/'+oldnames[i], path+'/'+newnames[i])
+                break
+
+        for i in range(0, len(newnames)):
+            if newnames[i] == "":
+                if query_yes_no("Are you sure to delete '%s' ?" %self.oldnames[i], "no"):
+                    try:
+                        os.remove(self.oldnames[i])
+                    except Exception as e:
+                        print("Error: can not delete '%s':" %self.oldnames[i], e.strerror)
+                else:
+                    print("Skipping '%s' ..." %self.oldnames[i])
+            elif not newnames[i] == self.oldnames[i]:
+                print("Rename '%s' to '%s' ..." %(self.oldnames[i], newnames[i]))
+                os.rename(path+'/'+self.oldnames[i], path+'/'+newnames[i])
 
 
 def query_yes_no(question, default="yes"):
@@ -85,9 +151,16 @@ def query_yes_no(question, default="yes"):
                              "(or 'y' or 'n').\n")
 
 if __name__ == "__main__":
-    path = '.'
-    if len(sys.argv) == 2:
-        path = sys.argv[1]
-    elif len(sys.argv) > 2:
-        print("Usage: %s [PATH]" %sys.argv[0])
-    mvim(path)
+
+    parser = ArgumentParser(description='Rename files by editing their names with vim.')
+    parser.add_argument('-a', '--all', dest='all_files', action='store_true', help='do not ignore entries starting with.')
+    parser.add_argument('-f', '--follow-symlinks', dest='follow_symlinks', action='store_true', help='follow symlinks.')
+    parser.add_argument('files', metavar='FILE', nargs='*')
+
+    args = parser.parse_args()
+
+    files = args.files
+    if not files:
+        files.append('.')
+
+    MVim(args.files, all_files=args.all_files, follow_symlinks=args.follow_symlinks)
