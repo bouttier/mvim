@@ -28,8 +28,6 @@ class MVim:
         for file in files:
             self.add(file)
 
-        print(self.oldnames)
-
         self.tmpfile = NamedTemporaryFile(prefix='vimv.')
         for name in self.oldnames:
             self.tmpfile.write(("%s\n" %name).encode('utf8'))
