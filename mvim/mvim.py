@@ -1,4 +1,18 @@
-#!/usr/bin/env python3
+"""
+   Copyright 2014 Elie Bouttier
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and 
+   limitations under the License.
+"""
 
 import os
 import sys
@@ -7,14 +21,15 @@ import subprocess
 from argparse import ArgumentParser
 from shutil import rmtree
 
+
 class MVim:
 
     def __init__(self, files, **kwargs):
 
-        self.all_files = False
+        self.all_files = False # do not ignore entires startinng with .
         self.follow_symlinks = False
-        self.force = False
-        self.recursive = False
+        self.force = False # force remove without asking
+        self.recursive = False # recursively remove directory
 
         for arg in kwargs:
             if arg == 'all_files':
@@ -26,7 +41,8 @@ class MVim:
             elif arg == 'recursive':
                 self.recursive = kwargs[arg]
             else:
-                print("Warning: ignoring invalid option '%s'" %arg, file=sys.stdout)
+                print("Warning: ignoring invalid option '%s'" %arg,
+                        file=sys.stdout)
 
         self.oldnames = []
         self.added_dir = []
@@ -35,7 +51,7 @@ class MVim:
         for file in files:
             self.add(file)
 
-        self.tmpfile = NamedTemporaryFile(prefix='vimv.')
+        self.tmpfile = NamedTemporaryFile(prefix='mvim.')
         for name in self.oldnames:
             self.tmpfile.write(("%s\n" %name).encode('utf8'))
         self.tmpfile.file.flush()
@@ -65,7 +81,8 @@ class MVim:
                     if not self.all_files:
                         listdir = [ x for x in listdir if x[0] != '.' ]
                     if file != '.':
-                        self.oldnames += list(map(lambda x: os.path.join(file, x), listdir))
+                        self.oldnames += list(map(lambda x:
+                            os.path.join(file, x), listdir))
                     else:
                         self.oldnames += listdir
             elif os.path.isfile(file):
@@ -82,7 +99,8 @@ class MVim:
                     self.oldnames += [ file ]
 
         else:
-            print("Warning: ignoring '%s': no such file or directory" %file, file=sys.stderr)
+            print("Warning: ignoring '%s': no such file or directory" %file,
+                    file=sys.stderr)
 
     def edit(self):
         while True:
@@ -111,20 +129,23 @@ class MVim:
 
         for i in range(0, len(newnames)):
             if newnames[i] == "":
-                if self.force or query_yes_no("Are you sure to delete '%s' ?" %self.oldnames[i], "no"):
-                    if self.recursive and os.path.isdir(self.oldnames[i]) and not os.path.islink(self.oldnames[i]):
+                if self.force or query_yes_no("Are you sure to delete '%s' ?"
+                        %self.oldnames[i], "no"):
+                    if self.recursive and os.path.isdir(self.oldnames[i]) \
+                            and not os.path.islink(self.oldnames[i]):
                         rmtree(self.oldnames[i])
                     else:
                         try:
                             os.remove(self.oldnames[i])
                         except Exception as e:
-                            print("Error: can not delete '%s':" %self.oldnames[i], e.strerror)
+                            print("Error: can not delete '%s':"
+                                    %self.oldnames[i], e.strerror)
                 else:
                     print("Skipping '%s' ..." %self.oldnames[i])
             elif not newnames[i] == self.oldnames[i]:
-                print("Rename '%s' to '%s' ..." %(self.oldnames[i], newnames[i]))
+                print("Rename '%s' to '%s' ..."
+                        %(self.oldnames[i], newnames[i]))
                 os.rename(self.oldnames[i], newnames[i])
-
 
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.
@@ -157,20 +178,3 @@ def query_yes_no(question, default="yes"):
         else:
             print("Please respond with 'yes' or 'no' "\
                              "(or 'y' or 'n').")
-
-if __name__ == "__main__":
-
-    parser = ArgumentParser(description='Rename files by editing their names with vim.')
-    parser.add_argument('-a', '--all', dest='all_files', action='store_true', help='do not ignore entries starting with.')
-    parser.add_argument('-s', '--follow-symlinks', dest='follow_symlinks', action='store_true', help='follow symlinks.')
-    parser.add_argument('-f', '--force', dest='force', action='store_true', help='bypass “Are you sure?” messages.')
-    parser.add_argument('-r', '--recursive', dest='recursive', action='store_true', help='remove directories and their contents recursively.')
-    parser.add_argument('files', metavar='FILE', nargs='*')
-
-    args = parser.parse_args()
-
-    files = args.files
-    if not files:
-        files.append('.')
-
-    MVim(args.files, all_files=args.all_files, follow_symlinks=args.follow_symlinks, force=args.force, recursive=args.recursive)

@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+
+from argparse import ArgumentParser
+from mvim import MVim
+
+
+if __name__ == "__main__":
+
+    parser = ArgumentParser(description='Rename files and directories by '
+                            'editing their names with vim.')
+    parser.add_argument('-a', '--all', dest='all_files', action='store_true',
+                        help='do not ignore entries starting with “.”.')
+    parser.add_argument('-s', '--follow-symlinks', dest='follow_symlinks',
+                        action='store_true', help='follow symlinks.')
+    parser.add_argument('-f', '--force', dest='force', action='store_true',
+                        help='bypass “Are you sure?” messages.')
+    parser.add_argument('-r', '--recursive', dest='recursive',
+                        action='store_true',
+                        help='remove directories and their contents '
+                        'recursively.')
+    parser.add_argument('files', metavar='FILE', nargs='*', help='file or '
+                        'directory to rename')
+
+    args = parser.parse_args()
+
+    files = args.files
+    if not files:
+        files.append('.')
+
+    MVim(args.files,
+         all_files=args.all_files,
+         follow_symlinks=args.follow_symlinks,
+         force=args.force,
+         recursive=args.recursive)
