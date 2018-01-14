@@ -146,7 +146,9 @@ class MVim:
                 print("Rename '%s' to '%s' ..."
                         %(self.oldnames[i], newnames[i]))
                 os.makedirs(os.path.dirname(newnames[i]), exist_ok=True)
-                os.rename(self.oldnames[i], newnames[i])
+                if not os.path.lexists(newnames[i]) or query_yes_no('Destination exists, override?', 'no'):
+                    os.rename(self.oldnames[i], newnames[i])
+
 
 def query_yes_no(question, default="yes"):
     """Ask a yes/no question via raw_input() and return their answer.

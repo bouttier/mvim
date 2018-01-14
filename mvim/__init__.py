@@ -17,4 +17,3 @@
 __version__ = '0.1.0'
 
 from mvim.mvim import MVim
-from mvim.mvim import query_yes_no
