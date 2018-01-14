@@ -145,6 +145,7 @@ class MVim:
             elif not newnames[i] == self.oldnames[i]:
                 print("Rename '%s' to '%s' ..."
                         %(self.oldnames[i], newnames[i]))
+                os.makedirs(os.path.dirname(newnames[i]), exist_ok=True)
                 os.rename(self.oldnames[i], newnames[i])
 
 def query_yes_no(question, default="yes"):
