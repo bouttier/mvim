@@ -18,6 +18,10 @@ if __name__ == "__main__":
                         action='store_true',
                         help='remove directories and their contents '
                         'recursively.')
+    parser.add_argument('-w', '--windows', dest='windows', action='store_true',
+                        help='open old and new filenames in two windows side by side.')
+    parser.add_argument('-d', '--diff', dest='diff', action='store_true',
+                        help='same as -w but in diff mode.')
     parser.add_argument('files', metavar='FILE', nargs='*', help='file or '
                         'directory to rename')
 
@@ -31,4 +35,6 @@ if __name__ == "__main__":
          all_files=args.all_files,
          follow_symlinks=args.follow_symlinks,
          force=args.force,
-         recursive=args.recursive)
+         recursive=args.recursive,
+         windows=args.windows,
+         diff=args.diff)

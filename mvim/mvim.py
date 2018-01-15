@@ -40,6 +40,10 @@ class MVim:
                 self.force = kwargs[arg]
             elif arg == 'recursive':
                 self.recursive = kwargs[arg]
+            elif arg == 'windows':
+                self.windows = kwargs[arg]
+            elif arg == 'diff':
+                self.diff = kwargs[arg]
             else:
                 print("Warning: ignoring invalid option '%s'" %arg,
                         file=sys.stdout)
@@ -51,15 +55,26 @@ class MVim:
         for file in files:
             self.add(file)
 
-        self.tmpfile = NamedTemporaryFile(prefix='mvim.')
-        for name in self.oldnames:
-            self.tmpfile.write(("%s\n" %name).encode('utf8'))
-        self.tmpfile.file.flush()
+        # Create a temporary file with new filenames.
+        self.new_names_file = NamedTemporaryFile(prefix='mvim.newnames.')
+        self.save_names_to_tmp(self.oldnames, self.new_names_file)
+
+        # Create a temporary file with old filenames if necessary.
+        if self.windows or self.diff:
+            self.old_names_file = NamedTemporaryFile(prefix='mvim.oldnames.')
+            self.save_names_to_tmp(self.oldnames, self.old_names_file)
 
         self.edit()
 
+
+    def save_names_to_tmp(self, names, tmpfile):
+        for name in names:
+            tmpfile.write(("%s\n" %name).encode('utf8'))
+        tmpfile.file.flush()
+
+
     def add(self, file):
-    
+
         if os.path.lexists(file):
 
             if os.path.isdir(file):
@@ -102,13 +117,43 @@ class MVim:
             print("Warning: ignoring '%s': no such file or directory" %file,
                     file=sys.stderr)
 
+
+    def open_vim(self):
+        if self.diff:
+            subprocess.call([
+                'vim',
+                # Open the list of old file names (RO).
+                '-c', 'view ' + self.old_names_file.name,
+                '-c', 'diffthis',
+                # Open the list of new file names in a new window (RW).
+                '-c', 'set splitright',
+                '-c', 'vsp',
+                '-c', 'edit ' + self.new_names_file.name,
+                '-c', 'diffthis',
+                # Open folds, Vim automatically folds everything since there is no difference.
+                '-c', 'foldopen'
+            ])
+        elif self.windows:
+            subprocess.call([
+                'vim',
+                # Open the list of old file names (RO).
+                '-c', 'view ' + self.old_names_file.name,
+                # Open the list of new file names in a new window (RW).
+                '-c', 'set splitright',
+                '-c', 'vsp',
+                '-c', 'edit ' + self.new_names_file.name
+            ])
+        else:
+            subprocess.call(['vim', self.new_names_file.name])
+
+
     def edit(self):
         while True:
-            subprocess.call(['vim', self.tmpfile.name])
-            self.tmpfile.file.seek(os.SEEK_SET)
+            self.open_vim()
+            self.new_names_file.file.seek(os.SEEK_SET)
             newnames = []
             while True:
-                line = self.tmpfile.file.readline()
+                line = self.new_names_file.file.readline()
                 if line == b'':
                     break
                 newnames.append(line.strip().decode('utf8'))
