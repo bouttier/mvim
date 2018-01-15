@@ -24,29 +24,15 @@ from shutil import rmtree
 
 class MVim:
 
-    def __init__(self, files, **kwargs):
+    def __init__(self, files, *, all_files=False, follow_symlinks=False,
+                 force=False, recursive=False, windows=False, diff=False):
 
-        self.all_files = False # do not ignore entires startinng with .
-        self.follow_symlinks = False
-        self.force = False # force remove without asking
-        self.recursive = False # recursively remove directory
-
-        for arg in kwargs:
-            if arg == 'all_files':
-                self.all_files = kwargs[arg]
-            elif arg == 'follow_symlinks':
-                self.follow_symlinks = kwargs[arg]
-            elif arg == 'force':
-                self.force = kwargs[arg]
-            elif arg == 'recursive':
-                self.recursive = kwargs[arg]
-            elif arg == 'windows':
-                self.windows = kwargs[arg]
-            elif arg == 'diff':
-                self.diff = kwargs[arg]
-            else:
-                print("Warning: ignoring invalid option '%s'" %arg,
-                        file=sys.stdout)
+        self.all_files = all_files
+        self.follow_symlinks = follow_symlinks
+        self.force = force
+        self.recursive = recursive
+        self.windows = windows
+        self.diff = diff
 
         self.oldnames = []
         self.added_dir = []
