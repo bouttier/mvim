@@ -24,6 +24,8 @@ if __name__ == "__main__":
                         help='same as -w but in diff mode.')
     parser.add_argument('-m', '--meld', dest='meld', action='store_true',
                         help='same as -d but open with meld.')
+    parser.add_argument('-c', '--command', dest='cmd', default=None,
+                        help='use custom editor command (can be combined with -d).')
     parser.add_argument('files', metavar='FILE', nargs='*', help='file or '
                         'directory to rename')
 

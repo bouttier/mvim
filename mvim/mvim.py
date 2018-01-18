@@ -25,7 +25,8 @@ from shutil import rmtree
 class MVim:
 
     def __init__(self, files, *, all_files=False, follow_symlinks=False,
-                 force=False, recursive=False, windows=False, diff=False, meld=False):
+                 force=False, recursive=False, windows=False, diff=False,
+                 meld=False, cmd=None):
 
         self.all_files = all_files
         self.follow_symlinks = follow_symlinks
@@ -33,7 +34,11 @@ class MVim:
         self.recursive = recursive
         self.windows = windows
         self.diff = diff
-        self.meld = meld
+        self.cmd = cmd
+
+        if meld:
+            self.cmd = 'meld'
+            self.diff = True
 
         self.oldnames = []
         self.added_dir = []
@@ -47,7 +52,7 @@ class MVim:
         self.save_names_to_tmp(self.oldnames, self.new_names_file)
 
         # Create a temporary file with old filenames if necessary.
-        if self.windows or self.diff or self.meld:
+        if self.windows or self.diff:
             self.old_names_file = NamedTemporaryFile(prefix='mvim.oldnames.')
             self.save_names_to_tmp(self.oldnames, self.old_names_file)
 
@@ -106,7 +111,19 @@ class MVim:
 
 
     def open_vim(self):
-        if self.diff:
+        if self.cmd:
+            if self.diff or self.windows:
+                subprocess.call([
+                    self.cmd,
+                    self.old_names_file.name,
+                    self.new_names_file.name,
+                ])
+            else:
+                subprocess.call([
+                    self.cmd,
+                    self.new_names_file.name,
+                ])
+        elif self.diff:
             subprocess.call([
                 'vim',
                 # Open the list of old file names (RO).
@@ -129,12 +146,6 @@ class MVim:
                 '-c', 'set splitright',
                 '-c', 'vsp',
                 '-c', 'edit ' + self.new_names_file.name
-            ])
-        elif self.meld:
-            subprocess.call([
-                'meld',
-                self.old_names_file.name,
-                self.new_names_file.name,
             ])
         else:
             subprocess.call(['vim', self.new_names_file.name])
