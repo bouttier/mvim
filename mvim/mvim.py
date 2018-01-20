@@ -10,7 +10,7 @@
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and 
+   See the License for the specific language governing permissions and
    limitations under the License.
 """
 
@@ -61,7 +61,7 @@ class MVim:
 
     def save_names_to_tmp(self, names, tmpfile):
         for name in names:
-            tmpfile.write(("%s\n" %name).encode('utf8'))
+            tmpfile.write((name + '\n').encode('utf8'))
         tmpfile.file.flush()
 
 
@@ -106,8 +106,8 @@ class MVim:
                     self.oldnames += [ file ]
 
         else:
-            print("Warning: ignoring '%s': no such file or directory" %file,
-                    file=sys.stderr)
+            print(f"Warning: ignoring '{file}': no such file or directory",
+                  file=sys.stderr)
 
 
     def open_vim(self):
@@ -167,10 +167,7 @@ class MVim:
                     verb = "added"
                 else:
                     verb = "removed"
-                plural = ""
-                if abs(i) != 1:
-                    plural = "s"
-                print("Error: you %s %d line%s" %(verb, abs(i), plural))
+                print(f"Error: you {verb} {abs(i)} line{'' if abs(i) == 1 else 's'}")
                 if not query_yes_no("Would you like edit file list again ?"):
                     return
             else:
@@ -178,8 +175,7 @@ class MVim:
 
         for i in range(0, len(newnames)):
             if newnames[i] == "":
-                if self.force or query_yes_no("Are you sure to delete '%s' ?"
-                        %self.oldnames[i], "no"):
+                if self.force or query_yes_no(f"Are you sure to delete '{self.oldname[i]}' ?", "no"):
                     if self.recursive and os.path.isdir(self.oldnames[i]) \
                             and not os.path.islink(self.oldnames[i]):
                         rmtree(self.oldnames[i])
@@ -187,13 +183,11 @@ class MVim:
                         try:
                             os.remove(self.oldnames[i])
                         except Exception as e:
-                            print("Error: can not delete '%s':"
-                                    %self.oldnames[i], e.strerror)
+                            print(f"Error: can not delete '{self.oldname[i]}':", e.strerror)
                 else:
-                    print("Skipping '%s' ..." %self.oldnames[i])
+                    print(f"Skipping '{self.oldnames[i]}' ...")
             elif not newnames[i] == self.oldnames[i]:
-                print("Rename '%s' to '%s' ..."
-                        %(self.oldnames[i], newnames[i]))
+                print(f"Rename '{self.oldnames[i]}' to '{newnames[i]}' ...")
                 if os.path.dirname(newnames[i]):
                     os.makedirs(os.path.dirname(newnames[i]), exist_ok=True)
                 if not os.path.lexists(newnames[i]) or query_yes_no('Destination exists, override?', 'no'):
@@ -219,7 +213,7 @@ def query_yes_no(question, default="yes"):
     elif default == "no":
         prompt = " [y/N] "
     else:
-        raise ValueError("invalid default answer: '%s'" % default)
+        raise ValueError(f"invalid default answer: '{default}'")
 
     while True:
         print(question + prompt, end='')
