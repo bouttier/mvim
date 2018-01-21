@@ -48,19 +48,19 @@ class MVim:
             self.add(f)
 
         # Create a temporary file with new filenames.
-        self.new_names_file = NamedTemporaryFile(prefix='mvim.newnames.')
+        self.new_names_file = NamedTemporaryFile(prefix='mvim.newnames.', mode='w+t')
         self.save_names_to_tmp(self.oldnames, self.new_names_file)
 
         # Create a temporary file with old filenames if necessary.
         if self.windows or self.diff:
-            self.old_names_file = NamedTemporaryFile(prefix='mvim.oldnames.')
+            self.old_names_file = NamedTemporaryFile(prefix='mvim.oldnames.', mode='w+t')
             self.save_names_to_tmp(self.oldnames, self.old_names_file)
 
         self.edit()
 
     def save_names_to_tmp(self, names, tmpfile):
         for name in names:
-            tmpfile.write((name.as_posix() + '\n').encode('utf-8'))
+            tmpfile.write(name.as_posix() + '\n')
         tmpfile.file.flush()
 
     def add(self, path):
@@ -120,7 +120,7 @@ class MVim:
         while True:
             self.open_vim()
             self.new_names_file.file.seek(os.SEEK_SET)
-            newnames = [Path(line.strip().decode('utf-8')) for line in self.new_names_file.file.readlines()]
+            newnames = [Path(line.strip()) for line in self.new_names_file.file.readlines()]
             if len(newnames) != len(self.oldnames):
                 i = len(newnames) - len(self.oldnames)
                 if i > 0:
