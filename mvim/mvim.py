@@ -18,8 +18,8 @@ import os
 import sys
 from tempfile import NamedTemporaryFile
 import subprocess
-from argparse import ArgumentParser
 from shutil import rmtree
+from pathlib import Path
 
 
 class MVim:
@@ -44,8 +44,8 @@ class MVim:
         self.added_dir = []
         self.added_files = []
 
-        for file in files:
-            self.add(file)
+        for f in files:
+            self.add(f)
 
         # Create a temporary file with new filenames.
         self.new_names_file = NamedTemporaryFile(prefix='mvim.newnames.')
@@ -58,55 +58,21 @@ class MVim:
 
         self.edit()
 
-
     def save_names_to_tmp(self, names, tmpfile):
         for name in names:
-            tmpfile.write((name + '\n').encode('utf8'))
+            tmpfile.write((name.as_posix() + '\n').encode('utf-8'))
         tmpfile.file.flush()
 
+    def add(self, path):
+        if path.is_symlink() and self.follow_symlinks:
+            path = path.resolve().relative_to(Path.cwd())
 
-    def add(self, file):
-
-        if os.path.lexists(file):
-
-            if os.path.isdir(file):
-                if not self.follow_symlinks and os.path.islink(file):
-                    self.oldnames += [ file ]
-                    return
-                added = False
-                for added_dir in self.added_dir:
-                    try:
-                        if os.path.samefile(added_dir, file):
-                            added = True
-                            break
-                    except OSError:
-                        pass
-                if not added:
-                    self.added_dir.append(file)
-                    listdir = os.listdir(file)
-                    listdir.sort()
-                    if not self.all_files:
-                        listdir = [ x for x in listdir if x[0] != '.' ]
-                    if file != '.':
-                        self.oldnames += list(map(lambda x:
-                            os.path.join(file, x), listdir))
-                    else:
-                        self.oldnames += listdir
-            elif os.path.isfile(file):
-                added = False
-                for added_file in self.added_files:
-                    try:
-                        if added_file == file:
-                            added = True
-                            break
-                    except OSError:
-                        pass
-                if not added:
-                    self.added_files.append(file)
-                    self.oldnames += [ file ]
-
+        if path.is_dir():
+            self.oldnames.extend(p for p in path.iterdir() if self.all_files or not p.as_posix().startswith('.'))
+        elif path.is_file() or path.is_symlink():
+            self.oldnames.append(path)
         else:
-            print(f"Warning: ignoring '{file}': no such file or directory",
+            print(f"Warning: ignoring '{path}': no such file or directory",
                   file=sys.stderr)
 
 
@@ -150,17 +116,11 @@ class MVim:
         else:
             subprocess.call(['vim', self.new_names_file.name])
 
-
     def edit(self):
         while True:
             self.open_vim()
             self.new_names_file.file.seek(os.SEEK_SET)
-            newnames = []
-            while True:
-                line = self.new_names_file.file.readline()
-                if line == b'':
-                    break
-                newnames.append(line.strip().decode('utf8'))
+            newnames = [Path(line.strip().decode('utf-8')) for line in self.new_names_file.file.readlines()]
             if len(newnames) != len(self.oldnames):
                 i = len(newnames) - len(self.oldnames)
                 if i > 0:
@@ -173,25 +133,24 @@ class MVim:
             else:
                 break
 
-        for i in range(0, len(newnames)):
-            if newnames[i] == "":
-                if self.force or query_yes_no(f"Are you sure to delete '{self.oldname[i]}' ?", "no"):
-                    if self.recursive and os.path.isdir(self.oldnames[i]) \
-                            and not os.path.islink(self.oldnames[i]):
-                        rmtree(self.oldnames[i])
+        for newname, oldname in zip(newnames, self.oldnames):
+            if newname == Path("."):
+                if self.force or query_yes_no(f"Are you sure to delete '{oldname}' ?", "no"):
+                    if self.recursive and oldname.is_dir() and not oldname.is_symlink():
+                        rmtree(oldname)
                     else:
                         try:
-                            os.remove(self.oldnames[i])
+                            oldname.unlink()
                         except Exception as e:
-                            print(f"Error: can not delete '{self.oldname[i]}':", e.strerror)
+                            print(f"Error: can not delete '{oldname}':", e.strerror)
                 else:
-                    print(f"Skipping '{self.oldnames[i]}' ...")
-            elif not newnames[i] == self.oldnames[i]:
-                print(f"Rename '{self.oldnames[i]}' to '{newnames[i]}' ...")
-                if os.path.dirname(newnames[i]):
-                    os.makedirs(os.path.dirname(newnames[i]), exist_ok=True)
-                if not os.path.lexists(newnames[i]) or query_yes_no('Destination exists, override?', 'no'):
-                    os.rename(self.oldnames[i], newnames[i])
+                    print(f"Skipping '{oldname}' ...")
+            elif newname != oldname:
+                print(f"Rename '{oldname}' to '{newname}' ...")
+                newname.parent.mkdir(exist_ok=True)
+                if not (newname.exists() or newname.is_symlink()) \
+                        or query_yes_no('Destination exists, override?', 'no'):
+                    oldname.rename(newname)
 
 
 def query_yes_no(question, default="yes"):

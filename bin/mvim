@@ -2,6 +2,7 @@
 
 from argparse import ArgumentParser
 from mvim import MVim
+from pathlib import Path
 
 
 if __name__ == "__main__":
@@ -26,13 +27,13 @@ if __name__ == "__main__":
                         help='same as -d but open with meld.')
     parser.add_argument('-c', '--command', dest='cmd', default=None,
                         help='use custom editor command (can be combined with -d).')
-    parser.add_argument('files', metavar='FILE', nargs='*', help='file or '
-                        'directory to rename')
+    parser.add_argument('files', metavar='FILE', nargs='*', type=Path,
+                        help='file or directory to rename')
 
     args = parser.parse_args()
 
     files = args.files
     if not files:
-        files.append('.')
+        files.append(Path('.'))
 
     MVim(**vars(args))
