@@ -75,7 +75,6 @@ class MVim:
             print(f"Warning: ignoring '{path}': no such file or directory",
                   file=sys.stderr)
 
-
     def open_vim(self):
         if self.cmd:
             if self.diff or self.windows:
@@ -153,34 +152,31 @@ class MVim:
                     oldname.rename(newname)
 
 
-def query_yes_no(question, default="yes"):
-    """Ask a yes/no question via raw_input() and return their answer.
+def query_yes_no(question, default=True):
+    """Ask a yes/no question via input() and return their answer.
 
     "question" is a string that is presented to the user.
     "default" is the presumed answer if the user just hits <Enter>.
-        It must be "yes" (the default), "no" or None (meaning
+        It must be True (the default), False or None (meaning
         an answer is required of the user).
 
     The "answer" return value is one of "yes" or "no".
     """
-    valid = {"yes":True,   "y":True,  "ye":True,
-             "no":False,     "n":False}
-    if default == None:
+    if default is None:
         prompt = " [y/n] "
-    elif default == "yes":
+    elif default:
         prompt = " [Y/n] "
-    elif default == "no":
-        prompt = " [y/N] "
     else:
-        raise ValueError(f"invalid default answer: '{default}'")
+        prompt = " [y/N] "
 
     while True:
         print(question + prompt, end='')
         choice = input().lower()
         if default is not None and choice == '':
-            return valid[default]
-        elif choice in valid:
-            return valid[choice]
+            return default
+        elif "yes".startswith(choice):
+            return True
+        elif "no".startswith(choice):
+            return False
         else:
-            print("Please respond with 'yes' or 'no' "\
-                             "(or 'y' or 'n').")
+            print("Please respond with 'yes' or 'no' (or 'y' or 'n').")
