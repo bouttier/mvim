@@ -21,6 +21,59 @@ import subprocess
 from shutil import rmtree
 from pathlib import Path
 
+import enum
+
+
+class Answer(enum.Enum):
+
+    YES = "y"
+    NO = "n"
+    QUIT = "q"
+    ALWAYS = "a"
+    NEVER = "d"
+    HELP = "?"
+
+    def basic(self):
+        if self == Answer.ALWAYS:
+            return Answer.YES
+        elif self == Answer.NEVER:
+            return Answer.NO
+        else:
+            return self
+
+    def storable(self):
+        return self in (Answer.ALWAYS, Answer.NEVER,)
+
+
+class UI:
+    def __init__(self):
+        self.answers = {}
+
+    def ask(self, question, key):
+        try:
+            # Search for an already known answer
+            return self.answers[key]
+        except KeyError:
+            return self._do_ask(question, key)
+
+    def _do_ask(self, question, key):
+        # Answer not known, ask for it
+        try:
+            ans = input(question + " [y,n,q,a,d,?] ").lower()
+            ans = Answer(ans[0])
+            if ans == Answer.QUIT:
+                raise KeyboardInterrupt()
+            if ans == Answer.HELP:
+                raise ValueError()
+            if ans.storable():
+                ans = self.answers[key] = ans.basic() == Answer.YES
+            else:
+                ans = ans == Answer.YES
+            return ans
+        except (ValueError, IndexError):
+            print("y: yes, n: no, a: always, d: never, q: quit, ?: help")
+            return self._do_ask(question, key)
+
 
 class MVim:
 
@@ -35,6 +88,8 @@ class MVim:
         self.windows = windows
         self.diff = diff
         self.cmd = cmd
+
+        self.ui = UI()
 
         if meld:
             self.cmd = 'meld'
@@ -132,24 +187,49 @@ class MVim:
             else:
                 break
 
-        for newname, oldname in zip(newnames, self.oldnames):
-            if newname == Path("."):
-                if self.force or query_yes_no(f"Are you sure to delete '{oldname}' ?", "no"):
-                    if self.recursive and oldname.is_dir() and not oldname.is_symlink():
-                        rmtree(oldname)
-                    else:
-                        try:
-                            oldname.unlink()
-                        except Exception as e:
-                            print(f"Error: can not delete '{oldname}':", e.strerror)
-                else:
-                    print(f"Skipping '{oldname}' ...")
-            elif newname != oldname:
-                print(f"Rename '{oldname}' to '{newname}' ...")
-                newname.parent.mkdir(exist_ok=True)
-                if not (newname.exists() or newname.is_symlink()) \
-                        or query_yes_no('Destination exists, override?', 'no'):
-                    oldname.rename(newname)
+        for newpath, oldpath in zip(newnames, self.oldnames):
+            if newpath == Path("."):
+                self.delete(oldpath)
+            elif newpath != oldpath:
+                self.rename(oldpath, newpath)
+            # else newname == oldname: pass
+
+    def delete(self, path):
+        if self.force or self.ui.ask(f"Delete '{path}' ?", key="del"):
+            self._do_delete(path)
+        else:
+            print(f"Skipping '{path}' ...")
+
+    def _do_delete(self, path):
+        try:
+            if self.recursive and path.is_dir() and not path.is_symlink():
+                rmtree(path)
+            else:
+                path.unlink()
+        except OSError as e:
+            print(
+                f"Error: cannot remove '{path}':",
+                e.strerror,
+                file=sys.stderr
+            )
+
+    def rename(self, oldpath, newpath):
+        try:
+            newpath.parent.mkdir(exist_ok=True)
+            if (not newpath.exists()
+                or self.ui.ask(f"Overwrite '{newpath}'?", key='over')
+            ):
+                oldpath.rename(newpath)
+                print(f"'{oldpath}' -> '{newpath}'", file=sys.stderr)
+            else:
+                print(f"Skipping '{oldpath}' ...")
+
+        except OSError as e:
+            print(
+                f"Error: cannot move '{oldpath}' to '{newpath}':",
+                e.strerror,
+                file=sys.stderr
+            )
 
 
 def query_yes_no(question, default=True):
