@@ -36,4 +36,7 @@ if __name__ == "__main__":
     if not files:
         files.append(Path('.'))
 
-    MVim(**vars(args))
+    try:
+        MVim(**vars(args))
+    except KeyboardInterrupt:
+        exit(1)
