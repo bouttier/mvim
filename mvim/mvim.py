@@ -123,7 +123,7 @@ class MVim:
             path = path.resolve().relative_to(Path.cwd())
 
         if path.is_dir():
-            self.oldnames.extend(p for p in path.iterdir() if self.all_files or not p.as_posix().startswith('.'))
+            self.oldnames.extend(sorted([p for p in path.iterdir() if self.all_files or not p.as_posix().startswith('.')]))
         elif path.is_file() or path.is_symlink():
             self.oldnames.append(path)
         else:
