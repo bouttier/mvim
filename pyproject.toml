@@ -1,2 +1,49 @@
+[project]
+name = "MVim"
+description = "Tool to rename files using vim to edit their names"
+readme = "README.md"
+requires-python = ">=3.6"
+license = { file="LICENCE" }
+dynamic = [ "version" ]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Utilities",
+]
+
+[[project.authors]]
+name = "Élie Bouttier"
+email = "elie+mvim@bouttier.eu"
+
+[project.urls]
+Source = "https://github.com/bouttier/mvim"
+Tracker = "https://github.com/bouttier/mvim/issues"
+
+[project.scripts]
+"mvim" = "mvim.main:main"
+
+[build-system]
+requires = [
+    "setuptools>=61.0",
+    "setuptools_scm[toml]>=7.0.0",
+]
+build-backend = "setuptools.build_meta"
+
+[tools.setuptools]
+package_dir = [
+    { ""="src" },
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+
 [tool.black]
 line-length = 99
