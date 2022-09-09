@@ -1,12 +1,10 @@
-#!/usr/bin/env python3
-
 from argparse import ArgumentParser
-from mvim import MVim
 from pathlib import Path
 
+from . import MVim
 
-if __name__ == "__main__":
 
+def main():
     parser = ArgumentParser(
         description="Rename files and directories by " "editing their names with vim."
     )
