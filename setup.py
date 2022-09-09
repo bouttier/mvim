@@ -8,7 +8,7 @@ setup(
     packages=["mvim"],
     scripts=["bin/mvim"],
     url="http://cgit.bouttier.eu.org/mvim/",
-    license="LICENSE.rst",
+    license="LICENSE",
     description="Rename or move files by editing their names with vim.",
     long_description=open("README.rst").read(),
 )
