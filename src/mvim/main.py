@@ -16,6 +16,11 @@ def main():
         help="do not ignore entries starting with “.”.",
     )
     parser.add_argument(
+        "--directory",
+        action="store_true",
+        help="list directories themselves, not their contents",
+    )
+    parser.add_argument(
         "-s",
         "--follow-symlinks",
         dest="follow_symlinks",
